@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Pneumonia Detection</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            max-width: 800px;
+            width: 100%;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #6b7280;
+            font-size: 1.1rem;
+            font-weight: 400;
+        }
+
+        .upload-section {
+            margin-bottom: 40px;
+        }
+
+        .upload-area {
+            border: 2px dashed #d1d5db;
+            border-radius: 16px;
+            padding: 60px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #f9fafb;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-area:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+            transform: translateY(-2px);
+        }
+
+        .upload-area.dragover {
+            border-color: #667eea;
+            background: #e0e7ff;
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 20px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .upload-text {
+            font-size: 1.2rem;
+            color: #374151;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .upload-subtext {
+            color: #6b7280;
+            font-size: 0.9rem;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .submit-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 16px 40px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            display: block;
+            margin: 0 auto;
+            min-width: 160px;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .result-section {
+            margin-top: 40px;
+            text-align: center;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.5s ease;
+        }
+
+        .result-section.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .result-image {
+            max-width: 100%;
+            height: auto;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+            max-height: 400px;
+            object-fit: cover;
+        }
+
+        .prediction-card {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .prediction-title {
+            font-size: 1.3rem;
+            color: #374151;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .prediction-result {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+        }
+
+        .prediction-normal {
+            color: #10b981;
+        }
+
+        .prediction-pneumonia {
+            color: #ef4444;
+        }
+
+        .confidence-bar {
+            background: #f3f4f6;
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 15px;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #10b981, #34d399);
+            transition: width 1s ease;
+        }
+
+        .confidence-text {
+            font-size: 0.9rem;
+            color: #6b7280;
+            margin-top: 10px;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .selected-file {
+            background: #e0e7ff;
+            border: 2px solid #667eea;
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .selected-file.show {
+            display: block;
+        }
+
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .file-icon {
+            width: 40px;
+            height: 40px;
+            background: #667eea;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+        }
+
+        .file-details h4 {
+            margin: 0 0 5px 0;
+            color: #374151;
+            font-weight: 600;
+        }
+
+        .file-details p {
+            margin: 0;
+            color: #6b7280;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .upload-area {
+                padding: 40px 20px;
+            }
+
+            .upload-icon {
+                width: 48px;
+                height: 48px;
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>AI Pneumonia Detection</h1>
+            <p>Upload a chest X-ray image for instant AI-powered analysis</p>
+        </div>
+
+        <form id="uploadForm" enctype="multipart/form-data">
+            <div class="upload-section">
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">
+                        📁
+                    </div>
+                    <div class="upload-text">Drop your X-ray image here</div>
+                    <div class="upload-subtext">or click to browse • PNG, JPG, JPEG up to 10MB</div>
+                    <input type="file" class="file-input" id="fileInput" name="my_image" accept="image/*">
+                </div>
+                
+                <div class="selected-file" id="selectedFile">
+                    <div class="file-info">
+                        <div class="file-icon">🖼️</div>
+                        <div class="file-details">
+                            <h4 id="fileName">No file selected</h4>
+                            <p id="fileSize">0 KB</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" class="submit-btn" id="submitBtn" disabled>
+                Analyze Image
+            </button>
+        </form>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Analyzing your X-ray image...</p>
+        </div>
+
+        <div class="result-section" id="resultSection">
+            <img id="resultImage" class="result-image" alt="Uploaded X-ray">
+            <div class="prediction-card">
+                <div class="prediction-title">Analysis Result</div>
+                <div class="prediction-result" id="predictionResult">
+                    Normal
+                </div>
+                <div class="confidence-bar">
+                    <div class="confidence-fill" id="confidenceFill" style="width: 0%"></div>
+                </div>
+                <div class="confidence-text" id="confidenceText">
+                    Confidence: 95%
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const selectedFile = document.getElementById('selectedFile');
+        const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
+        const submitBtn = document.getElementById('submitBtn');
+        const uploadForm = document.getElementById('uploadForm');
+        const loading = document.getElementById('loading');
+        const resultSection = document.getElementById('resultSection');
+        const resultImage = document.getElementById('resultImage');
+        const predictionResult = document.getElementById('predictionResult');
+        const confidenceFill = document.getElementById('confidenceFill');
+        const confidenceText = document.getElementById('confidenceText');
+
+        // Upload area click handler
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        // Drag and drop handlers
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileSelect(files[0]);
+            }
+        });
+
+        // File input change handler
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelect(e.target.files[0]);
+            }
+        });
+
+        // Handle file selection
+        function handleFileSelect(file) {
+            if (file && file.type.startsWith('image/')) {
+                fileName.textContent = file.name;
+                fileSize.textContent = formatFileSize(file.size);
+                selectedFile.classList.add('show');
+                submitBtn.disabled = false;
+                
+                // Preview image
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    resultImage.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            } else {
+                alert('Please select a valid image file (PNG, JPG, JPEG)');
+            }
+        }
+
+        // Format file size
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // Form submit handler
+        uploadForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            if (!fileInput.files[0]) {
+                alert('Please select an image first');
+                return;
+            }
+
+            // Show loading
+            loading.classList.add('show');
+            submitBtn.disabled = true;
+            resultSection.classList.remove('show');
+
+            // Simulate API call (replace with actual endpoint)
+            setTimeout(() => {
+                // Hide loading
+                loading.classList.remove('show');
+                submitBtn.disabled = false;
+
+                // Simulate prediction result
+                const predictions = [
+                    { result: 'Normal', confidence: 94, color: 'normal' },
+                    { result: 'Pneumonia Detected', confidence: 87, color: 'pneumonia' },
+                    { result: 'Normal', confidence: 91, color: 'normal' }
+                ];
+                
+                const randomPrediction = predictions[Math.floor(Math.random() * predictions.length)];
+                
+                // Display results
+                predictionResult.textContent = randomPrediction.result;
+                predictionResult.className = `prediction-result prediction-${randomPrediction.color}`;
+                confidenceText.textContent = `Confidence: ${randomPrediction.confidence}%`;
+                
+                // Animate confidence bar
+                setTimeout(() => {
+                    confidenceFill.style.width = `${randomPrediction.confidence}%`;
+                }, 100);
+                
+                // Show results with animation
+                resultSection.classList.add('show');
+                
+            }, 3000); // Simulate 3 second processing time
+        });
+
+        // Add some initial animations
+        window.addEventListener('load', () => {
+            uploadArea.style.animation = 'fadeInUp 0.8s ease forwards';
+        });
+    </script>
+</body>
+</html>
+
